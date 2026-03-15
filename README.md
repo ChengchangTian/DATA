@@ -36,7 +36,7 @@ Feature-level fusion shows promise in collaborative perception (CP) through bala
 
 ## Implementation
 
-**Code and environment setup are being organized and will be released progressively.**
+**Model code and pretrained weights are now available. Detailed documentation is being prepared.**
 
 ## Citation
 
