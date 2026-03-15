@@ -43,6 +43,11 @@ class DAIRV2XBaseDataset(Dataset):
         else:
             self.clip_pc = False
 
+        if 'ego_flip' in params:
+            self.ego_flip = params['ego_flip']
+        else:
+            self.ego_flip = True
+
         if 'train_params' not in params or 'max_cav' not in params['train_params']:
             self.max_cav = 2
         else:
@@ -122,8 +127,10 @@ class DAIRV2XBaseDataset(Dataset):
         transformation_matrix = inf_side_rot_and_trans_to_trasnformation_matrix(virtuallidar_to_world, system_error_offset)
         data[1]['params']['lidar_pose'] = tfm_to_pose(transformation_matrix)
 
-        data[0]['params']['vehicles_front'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path'].replace("label_world", "label_world_backup"))) 
-        data[0]['params']['vehicles_all'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path'])) 
+        # data[0]['params']['vehicles_front'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path'].replace("label_world", "label_world_backup"))) 
+        data[0]['params']['vehicles_front'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path']))
+        data[0]['params']['vehicles_all'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path'].replace("label_world", "label_world_complemented")))
+        # data[0]['params']['vehicles_all'] = read_json(os.path.join(self.root_dir,frame_info['cooperative_label_path']))
 
         data[1]['params']['vehicles_front'] = [] # we only load cooperative label in vehicle side
         data[1]['params']['vehicles_all'] = [] # we only load cooperative label in vehicle side
@@ -150,10 +157,14 @@ class DAIRV2XBaseDataset(Dataset):
 
 
         # Label for single side
+        # data[0]['params']['vehicles_single_front'] = read_json(os.path.join(self.root_dir, \
+        #                         'vehicle-side/label/lidar_backup/{}.json'.format(veh_frame_id)))
         data[0]['params']['vehicles_single_front'] = read_json(os.path.join(self.root_dir, \
-                                'vehicle-side/label/lidar_backup/{}.json'.format(veh_frame_id)))
-        data[0]['params']['vehicles_single_all'] = read_json(os.path.join(self.root_dir, \
                                 'vehicle-side/label/lidar/{}.json'.format(veh_frame_id)))
+        # data[0]['params']['vehicles_single_all'] = read_json(os.path.join(self.root_dir, \
+        #                         'vehicle-side/label/lidar/{}.json'.format(veh_frame_id)))
+        data[0]['params']['vehicles_single_all'] = read_json(os.path.join(self.root_dir, \
+                                'vehicle-side/label/lidar_complemented/{}.json'.format(veh_frame_id)))
         data[1]['params']['vehicles_single_front'] = read_json(os.path.join(self.root_dir, \
                                 'infrastructure-side/label/virtuallidar/{}.json'.format(inf_frame_id)))
         data[1]['params']['vehicles_single_all'] = read_json(os.path.join(self.root_dir, \
@@ -172,12 +183,16 @@ class DAIRV2XBaseDataset(Dataset):
             # data[0]['modality_name'] = 'm2'
             # data[1]['modality_name'] = 'm1'
 
-            if self.train: # randomly choose RSU or Veh to be Ego
+            data[0]['reverse_ego'] = False
+            data[1]['reverse_ego'] = False
+
+            if self.train and self.ego_flip: # randomly choose RSU or Veh to be Ego
                 p = np.random.rand()
                 if p > 0.5:
                     data[0], data[1] = data[1], data[0]
                     data[0]['ego'] = True
                     data[1]['ego'] = False
+                    data[0]['reverse_ego'] = True
             else:
                 # evaluate, the agent of ego modality should be ego
                 if self.adaptor.mapping_dict[data[0]['modality_name']] not in self.ego_modality and \
